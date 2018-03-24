@@ -305,13 +305,10 @@ class Sudoku {
     }
 
     solve() {
-        return this.deterministicSolve();
+        this.deterministicSolve();
         if (!this.isSolved()) {
-            console.log('guessing');
             var guess = this.guess();
-            console.log(guess);
             if (guess && guess.isSolved() && guess.sanityCheck()) {
-                console.log('guess found');
                 this.puzzle = guess.puzzle;
             }
         }
@@ -473,11 +470,6 @@ class Sudoku {
     }
 
     guess() {
-        if (n++ % 10000 == 9999) {
-            console.log(n);
-            this.print()
-        }
-
         this.deterministicSolve();
 
         if (!this.sanityCheck()) return false;
@@ -502,32 +494,5 @@ class Sudoku {
     }
 
 }
-var n = 0;
 
-//var puzzles = require('./problems');
-var puzzles = require('./problems-hard');
-puzzles = [ puzzles[0] ];
-var done_count = 0;
-var not_done_count = 0;
-var insane_count = 0;
-
-for (var i = 0; i < puzzles.length; ++i) {
-    var sudoku = new Sudoku(puzzles[i]);
-    var sane = sudoku.sanityCheck(true);
-    sudoku.solve();
-    var sane = sudoku.sanityCheck(true);
-    var solved = sudoku.isSolved();
-    solved ? ++done_count : ++not_done_count;
-
-    console.log('----------------------------------');
-    sudoku.print(true);
-    sudoku.print();
-    console.log(solved ? 'solved' : 'not solved')
-    if (!sane) {
-        sudoku.sanityReport();
-    }
-}
-console.log(not_done_count + ' not done');
-console.log(done_count + ' done');
-console.log(((done_count / puzzles.length) * 100).toFixed(1) + '% solved');
-
+module.exports = Sudoku;
