@@ -1,5 +1,7 @@
 "use strict";
 
+var colors = require('colors');
+
 /*
  0  1  2 |  3  4  5 |  6  7  8
  9 10 11 | 12 13 14 | 15 16 17
@@ -16,9 +18,9 @@
 
 var ALL = 0b1111111110;
 
-var SOLVED = 0b0000000001;
+var IS_SOLVED = 0b0000000001;
 
-var BITS = {
+var SOLVED = {
     1:     0b0000000011,
     2:     0b0000000101,
     3:     0b0000001001,
@@ -81,7 +83,7 @@ class Sudoku {
         var p = 0;
         for (var i = 0; i < puzzle.length; ++i) {
             if ([ '1', '2', '3', '4', '5', '6', '7', '8', '9' ].indexOf(puzzle[i]) != -1) {
-                this.puzzle[p] = BITS[puzzle[i]];
+                this.puzzle[p] = SOLVED[puzzle[i]];
                 ++p;
             } else if (puzzle[i] == '.') {
                 this.puzzle[p] = ALL;
@@ -90,20 +92,32 @@ class Sudoku {
         }
     }
 
-    print(start_puzzle, binary) {
+    print(start_puzzle, binary, return_str) {
         var str = '';
         for (var i = 0; i < 9; ++i) {
             for (var j = 0; j < 9; ++j) {
-                var bit = start_puzzle ? this.start_puzzle[i * 9 + j] : this.puzzle[i * 9 + j];
+                var index = i * 9 + j;
+                var bit = start_puzzle ? this.start_puzzle[index] : this.puzzle[index];
+                var square = '';
                 if (binary) {
-                    str += bit.toString(2).padStart(10, '0') + ' ';
+                    square = bit.toString(2).padStart(10, '0');
                 } else {
-                    if (bit & SOLVED) {
-                        str += MAP[bit] + ' ';
+                    if (bit & IS_SOLVED) {
+                        square = (MAP[bit]).toString() || '!';
                     } else {
-                        str += '. ';
+                        square = '.';
                     }
                 }
+                if (this.no_possible_squares && this.no_possible_squares.indexOf(index) != -1) {
+                    square = square.bgBlue;
+                }
+                if (this.conflict_squares && this.conflict_squares.indexOf(index) != -1) {
+                    square = square.bgRed;
+                }
+                if (this.changed_squares && this.changed_squares.indexOf(index) != -1) {
+                    square = square.underline;
+                }
+                str += square + ' ';
                 if (j != 8 && j % 3 == 2) str += '| ';
             }
             str += '\n';
@@ -115,7 +129,11 @@ class Sudoku {
                 }
             }
         }
-        console.log(str);
+        if (return_str) {
+            return str;
+        } else {
+            console.log(str);
+        }
     }
 
     getRowIndexes(i) {
@@ -138,12 +156,12 @@ class Sudoku {
 
     isSolved() {
         for (var i = 0; i < 81; ++i) {
-            if (!(this.puzzle[i] & SOLVED)) return false;
+            if (!(this.puzzle[i] & IS_SOLVED)) return false;
         }
         return true;;
     }
 
-    sanityCheck() {
+    sanityCheck(build_report) {
         var sets = [
             // rows
             [ 0,  1,  2,  3,  4,  5,  6,  7,  8  ],
@@ -179,31 +197,95 @@ class Sudoku {
             [ 60, 61, 62, 69, 70, 71, 78, 79, 80 ],
         ];
 
+        var sane = true;
+        if (build_report) {
+            this.no_possible_squares = [];
+            this.conflict_squares = [];
+            this.changed_squares = [];
+        }
+
+        for (var i = 0; i < 81; ++i) {
+            if (this.puzzle[i] == 0) {
+                if (build_report) {
+                    sane = false;
+                    this.no_possible_squares.push(i);
+                } else {
+                    return false;
+                }
+            }
+        }
+
         for (var i = 0; i < sets.length; ++i) {
             var set = sets[i];
             var set_or = 0;
             var set_xor = 0;
-            var l = [];
             for (var j = 0; j < set.length; ++j) {
-                if (this.puzzle[set[j]] & SOLVED) {
+                if (this.puzzle[set[j]] & IS_SOLVED) {
                     set_or = set_or | this.puzzle[set[j]];
                     set_xor = set_xor ^ this.puzzle[set[j]];
-                    l.push(this.puzzle[set[j]]);
                 }
             }
+
             if (set_or) {
-                set_xor = set_xor | SOLVED;
-                if (set_or != set_xor) return false;
+                set_xor = set_xor | IS_SOLVED;
+                if (set_or != set_xor) {
+                    if (build_report) {
+                        sane = false;
+                        console.log(
+                            set[i],
+                            i,
+                            (set_xor ^ set_or).toString(2).padStart(10, '0'),
+                            set_or.toString(2).padStart(10, '0'),
+                            set_xor.toString(2).padStart(10, '0')
+                        );
+                        var bad_bit = (set_or ^ set_xor) | IS_SOLVED;
+                        for (var j = 0; j < set.length; ++j) {
+                            if (this.puzzle[set[j]] == bad_bit) {
+                                this.conflict_squares = this.conflict_squares.concat(set[j]);
+                            }
+                        }
+                    } else {
+                        return false;
+                    }
+                }
             }
         }
 
         if (this.start_puzzle) {
             for (var i = 0; i < 81; ++i) {
-                if (this.start_puzzle[i] & SOLVED && this.start_puzzle[i] != this.puzzle[i]) return false;
+                if (this.start_puzzle[i] & IS_SOLVED && this.start_puzzle[i] != this.puzzle[i]) {
+                    if (build_report) {
+                        sane = false;
+                        this.changed_squares.push(i);
+                    } else {
+                        return false;
+                    }
+                }
             }
         }
 
-        return true
+        if (build_report && !sane) {
+            var print = this.print(false, false, true);
+            var bin_print = this.print(false, true, true);
+            var spaces = '                                                                                 ';
+            print = print.replace(/^/g, '| ').replace(/\n/g, spaces + '|\n| ').replace(/\n\| $/, '');
+            bin_print = bin_print.replace(/^/g, '| ').replace(/ \n/g, '\n').replace(/\n/g, ' |\n| ').replace(/\n\| $/, '');
+            console.log();
+            console.log(' -------------------------------------------------------------------------------------------------------- ');
+            console.log('|   NOT SANE                                                                                             |');
+            console.log('|   no possible: ', this.no_possible_squares.join(', '));
+            console.log('|   conflict:    ', this.conflict_squares.join(', '));
+            console.log('|   changed:     ', this.changed_squares.join(', '));
+            console.log('|                                                                                                        |');
+            console.log(print);
+            console.log('|                                                                                                        |');
+            console.log(bin_print);
+            console.log('|                                                                                                        |');
+            console.log(' -------------------------------------------------------------------------------------------------------- ');
+            console.log();
+        }
+
+        return sane;
     }
 
     basicSolve() {
@@ -215,10 +297,23 @@ class Sudoku {
         } while (changed);
     }
 
-    solve() {
+    deterministicSolve() {
         this.basicSolve();
         if (!this.isSolved() && this.checkForGuessErrors()) {
-            return this.solve();
+            return this.deterministicSolve();
+        }
+    }
+
+    solve() {
+        return this.deterministicSolve();
+        if (!this.isSolved()) {
+            console.log('guessing');
+            var guess = this.guess();
+            console.log(guess);
+            if (guess && guess.isSolved() && guess.sanityCheck()) {
+                console.log('guess found');
+                this.puzzle = guess.puzzle;
+            }
         }
     }
 
@@ -227,19 +322,19 @@ class Sudoku {
         var changed = false;
         for (var i = 0; i < 81; ++i) {
         //for (var i = 0; i < 20; ++i) {
-            if (this.puzzle[i] & SOLVED) continue;
+            if (this.puzzle[i] & IS_SOLVED) continue;
             var row = this.getRowIndexes(i);
             var col = this.getColIndexes(i);
             var block = this.getBlockIndexes(i);
             var solved_mask = 0;
-            for (var j = 0; j < 9; ++j) if (this.puzzle[row[j]] & SOLVED) solved_mask |= this.puzzle[row[j]];
-            for (var j = 0; j < 9; ++j) if (this.puzzle[col[j]] & SOLVED) solved_mask |= this.puzzle[col[j]];
-            for (var j = 0; j < 9; ++j) if (this.puzzle[block[j]] & SOLVED) solved_mask |= this.puzzle[block[j]];
+            for (var j = 0; j < 9; ++j) if (this.puzzle[row[j]] & IS_SOLVED) solved_mask |= this.puzzle[row[j]];
+            for (var j = 0; j < 9; ++j) if (this.puzzle[col[j]] & IS_SOLVED) solved_mask |= this.puzzle[col[j]];
+            for (var j = 0; j < 9; ++j) if (this.puzzle[block[j]] & IS_SOLVED) solved_mask |= this.puzzle[block[j]];
             var old_cell = this.puzzle[i];
             var new_cell = (this.puzzle[i] &= ~solved_mask);
             if (old_cell != new_cell) changed = true;
             if (self.possibilityCount(self.puzzle[i]) == 1) {
-                self.puzzle[i] |= SOLVED;
+                self.puzzle[i] |= IS_SOLVED;
             }
         }
         return changed;
@@ -249,7 +344,7 @@ class Sudoku {
         var self = this;
         var changed = false;
         for (var i = 0; i < 81; ++i) {
-            if (this.puzzle[i] & SOLVED) continue;
+            if (this.puzzle[i] & IS_SOLVED) continue;
             var row = this.getRowIndexes(i);
             var col = this.getColIndexes(i);
             var block = this.getBlockIndexes(i);
@@ -263,7 +358,7 @@ class Sudoku {
                             if (self.puzzle[sets[s][k]] & POSSIBLE[candidate]) clash_found = true;
                         }
                         if (!clash_found) {
-                            self.puzzle[i] = BITS[candidate];
+                            self.puzzle[i] = SOLVED[candidate];
                             changed = true;
                         }
                     }
@@ -357,17 +452,17 @@ class Sudoku {
         var changed = false;
         var branch = this.branch();
         for (var i = 0; i < 81; ++i) {
-            if (this.puzzle[i] & SOLVED) continue;
+            if (this.puzzle[i] & IS_SOLVED) continue;
             for (var j = 1; j <= 9; ++j) {
                 if (!(this.puzzle[i] & POSSIBLE[j])) continue;
                 branch.reset()
-                branch.puzzle[i] = BITS[j];
+                branch.puzzle[i] = SOLVED[j];
                 branch.basicSolve()
 
                 if (!branch.sanityCheck()) {
                     this.puzzle[i] &= ~POSSIBLE[j];
                     if (this.possibilityCount(this.puzzle[i]) == 1) {
-                        this.puzzle[i] |= SOLVED;
+                        this.puzzle[i] |= IS_SOLVED;
                     }
                     changed = true;
                     break;
@@ -377,30 +472,59 @@ class Sudoku {
         return changed;
     }
 
-}
+    guess() {
+        if (n++ % 10000 == 9999) {
+            console.log(n);
+            this.print()
+        }
 
-var puzzles = require('./problems');
-//var puzzles = require('./problems-hard');
+        this.deterministicSolve();
+
+        if (!this.sanityCheck()) return false;
+
+        if (this.isSolved()) return this;
+
+        for (var i = 0; i < 81; ++i) {
+            if (this.puzzle[i] & IS_SOLVED) continue;
+            for (var j = 0; j <= 9; ++j) {
+                if (this.puzzle[i] & POSSIBLE[j]) {
+                    var branch = this.branch();
+                    branch.puzzle[i] = SOLVED[j];
+                    var guess = branch.guess();
+                    if (guess) {
+                        return guess;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+}
+var n = 0;
+
+//var puzzles = require('./problems');
+var puzzles = require('./problems-hard');
+puzzles = [ puzzles[0] ];
 var done_count = 0;
 var not_done_count = 0;
 var insane_count = 0;
 
 for (var i = 0; i < puzzles.length; ++i) {
     var sudoku = new Sudoku(puzzles[i]);
+    var sane = sudoku.sanityCheck(true);
     sudoku.solve();
-    var sane = sudoku.sanityCheck();
+    var sane = sudoku.sanityCheck(true);
     var solved = sudoku.isSolved();
     solved ? ++done_count : ++not_done_count;
 
-    if (!solved) {
-        console.log('----------------------------------');
-        sudoku.print(true);
-        sudoku.print();
-        console.log('solved', solved)
-    }
+    console.log('----------------------------------');
+    sudoku.print(true);
+    sudoku.print();
+    console.log(solved ? 'solved' : 'not solved')
     if (!sane) {
-        console.log('NOT SANE!!!!!!!!!');
-        process.exit();
+        sudoku.sanityReport();
     }
 }
 console.log(not_done_count + ' not done');

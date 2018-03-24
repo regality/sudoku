@@ -1,0 +1,13 @@
+{
+  "name": "sudoku",
+  "version": "1.0.0",
+  "description": "sudoku solver",
+  "main": "sudoku.js",
+  "dependencies": {
+    "colors": "^1.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/regality/sudoku.git"
+  }
+}
