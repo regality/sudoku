@@ -1,3 +1,16 @@
+/*
+ 0  1  2 |  3  4  5 |  6  7  8
+ 9 10 11 | 12 13 14 | 15 16 17
+18 19 20 | 21 22 23 | 24 25 26
+---------|----------|----------
+27 28 29 | 30 31 32 | 33 34 35
+36 37 38 | 39 40 41 | 42 43 44
+45 46 47 | 48 49 50 | 51 52 53
+---------|----------|----------
+54 55 56 | 57 58 59 | 60 61 62
+63 64 65 | 66 67 68 | 69 70 71
+72 73 74 | 75 76 77 | 78 79 80
+*/
 
 function parse(puzzle) {
     var arr = [];
@@ -142,7 +155,7 @@ function checkForGuessErrors(puzzle, poss) {
             guess_poss[i] = [ poss[i][j] ];
             basicSolve(guess_puzzle, guess_poss);
 
-            if (!sanityCheck(guess_puzzle, puzzle)) {
+            if (!sanityCheck(guess_puzzle, puzzle, poss)) {
                 poss[i].splice(j, 1);
                 changed = true;
             }
@@ -151,60 +164,22 @@ function checkForGuessErrors(puzzle, poss) {
     return changed;
 }
 
-function guess(puzzle) {
-    for (var i = 0; i < 81; ++i) {
-        if (puzzle[i] != '.') continue;
-        for (var j = 1; j <= 9; ++j) {
-            puzzle[i] = j;
-            var sane = sanityCheck(puzzle, start_puzzle);
-            if (sane && isSolved(puzzle)) {
-                return puzzle;
-            }
-            if (!sane) {
-                return false;
-            }
-            if (sane) {
-                return guess(puzzle);
-            }
-        }
-    }
-}
-
 function basicSolve(puzzle, poss) {
-    var any_change = false;
     do {
         changed = false;
         changed = changed || fillInOnlyPossibleChoice(puzzle, poss);
         changed = changed || removePossibilitiesRowColBlock(puzzle, poss);
         changed = changed || removePossibilitiesFromTwins(puzzle, poss);
-        any_change = any_change || changed;
     } while (changed);
-    return any_change;
 }
 
 function solve(puzzle, poss) {
     basicSolve(puzzle, poss);
-    if (!isSolved(puzzle)) {
-        if (checkForGuessErrors(puzzle, poss))
-        {
-            return basicSolve(puzzle, poss);
-        }
+    if (!isSolved(puzzle) && checkForGuessErrors(puzzle, poss)) {
+        return solve(puzzle, poss);
     }
 }
 
-/*
- 0  1  2 |  3  4  5 |  6  7  8
- 9 10 11 | 12 13 14 | 15 16 17
-18 19 20 | 21 22 23 | 24 25 26
----------|----------|----------
-27 28 29 | 30 31 32 | 33 34 35
-36 37 38 | 39 40 41 | 42 43 44
-45 46 47 | 48 49 50 | 51 52 53
----------|----------|----------
-54 55 56 | 57 58 59 | 60 61 62
-63 64 65 | 66 67 68 | 69 70 71
-72 73 74 | 75 76 77 | 78 79 80
-*/
 function getRow(puzzle, i) {
     var row = Math.floor(i / 9);
     return puzzle.slice(row * 9, row * 9 + 9);
@@ -252,20 +227,46 @@ function isSolved(puzzle) {
     return true;;
 }
 
-function sanityCheck(puzzle, start_puzzle) {
+function sanityCheck(puzzle, start_puzzle, poss) {
     var sane = true;
-    // todo: only need to check every row,col,block, not every square
-    for (var i = 0; i < 81; ++i) {
-        var row = getRow(puzzle, i);
-        var col = getRow(puzzle, i);
-        var block = getRow(puzzle, i);
-        if (!rowSanity(row) || !rowSanity(col) || !rowSanity(block)) sane = false;
+    if (poss) {
+        for (var i = 0; i < 81; ++i) {
+            if (poss[i].length == 0) return false;
+        }
     }
-    // todo check if there are cells that have no possible values (i.e. there is a 9 in the row and the col)
-    // todo check if there are cells with no possibilities
+    if (!rowSanity(getRow(puzzle, 0)))  return false;
+    if (!rowSanity(getRow(puzzle, 9)))  return false;
+    if (!rowSanity(getRow(puzzle, 18))) return false;
+    if (!rowSanity(getRow(puzzle, 27))) return false;
+    if (!rowSanity(getRow(puzzle, 36))) return false;
+    if (!rowSanity(getRow(puzzle, 45))) return false;
+    if (!rowSanity(getRow(puzzle, 54))) return false;
+    if (!rowSanity(getRow(puzzle, 63))) return false;
+    if (!rowSanity(getRow(puzzle, 72))) return false;
+
+    if (!rowSanity(getCol(puzzle, 0)))  return false;
+    if (!rowSanity(getCol(puzzle, 1)))  return false;
+    if (!rowSanity(getCol(puzzle, 2)))  return false;
+    if (!rowSanity(getCol(puzzle, 3)))  return false;
+    if (!rowSanity(getCol(puzzle, 4)))  return false;
+    if (!rowSanity(getCol(puzzle, 5)))  return false;
+    if (!rowSanity(getCol(puzzle, 6)))  return false;
+    if (!rowSanity(getCol(puzzle, 7)))  return false;
+    if (!rowSanity(getCol(puzzle, 8)))  return false;
+
+    if (!rowSanity(getBlock(puzzle, 0)))  return false;
+    if (!rowSanity(getBlock(puzzle, 3)))  return false;
+    if (!rowSanity(getBlock(puzzle, 6)))  return false;
+    if (!rowSanity(getBlock(puzzle, 27)))  return false;
+    if (!rowSanity(getBlock(puzzle, 30)))  return false;
+    if (!rowSanity(getBlock(puzzle, 33)))  return false;
+    if (!rowSanity(getBlock(puzzle, 54)))  return false;
+    if (!rowSanity(getBlock(puzzle, 57)))  return false;
+    if (!rowSanity(getBlock(puzzle, 60)))  return false;
+
     if (start_puzzle) {
         for (var i = 0; i < 81; ++i) {
-            if (start_puzzle[i] != '.' && start_puzzle[i] != puzzle[i]) sane = false;
+            if (start_puzzle[i] != '.' && start_puzzle[i] != puzzle[i]) return false;
         }
     }
     return sane;
@@ -303,14 +304,8 @@ function guess(puzzle, poss) { // too slow, keeping for reference
     return false;
 }
 
-function countGuessPossibilites(poss) {
-    var count = 1;
-    for (var i = 0; i < poss.length; ++i) {
-        count *= poss[i].length;
-    }
-    return count;
-}
-
+//var puzzles = require('./problems-why');
+//var puzzles = require('./problems-hard');
 var puzzles = require('./problems');
 
 done_count = 0;
@@ -324,10 +319,12 @@ for (var i = 0; i < puzzles.length; ++i) {
     var sane = sanityCheck(puzzle, start_puzzle);
     done ? ++done_count : ++not_done_count;
 
-    console.log('----------------------------------------');
-    print(start_puzzle);
-    print(puzzle);
-    console.log(done ? 'done' : 'not done');
+    if (!done) {
+        console.log('----------------------------------------');
+        print(start_puzzle);
+        print(puzzle);
+        console.log(done ? 'done' : 'not done');
+    }
     if (!sane) console.log('NOT SANE!!!!!!!!!!!');
 }
 console.log(not_done_count + ' not done');
