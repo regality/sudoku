@@ -1,5 +1,5 @@
-var Sudoku = require('./sudoku2')
-  , puzzles = require('./problems')
+var Sudoku = require('./sudoku')
+  , puzzles = require('./puzzles/puzzles')
   , done_count = 0
   ;
 
