@@ -231,13 +231,6 @@ class Sudoku {
                 if (set_or != set_xor) {
                     if (build_report) {
                         sane = false;
-                        console.log(
-                            set[i],
-                            i,
-                            (set_xor ^ set_or).toString(2).padStart(10, '0'),
-                            set_or.toString(2).padStart(10, '0'),
-                            set_xor.toString(2).padStart(10, '0')
-                        );
                         var bad_bit = (set_or ^ set_xor) | IS_SOLVED;
                         for (var j = 0; j < set.length; ++j) {
                             if (this.puzzle[set[j]] == bad_bit) {

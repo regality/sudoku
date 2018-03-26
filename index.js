@@ -5,7 +5,7 @@ var Sudoku = require('./sudoku')
 
 for (var i = 0; i < puzzles.length; ++i) {
     var sudoku = new Sudoku(puzzles[i]);
-    sudoku.sanityCheck(true);
+    if (!sudoku.sanityCheck(true)) continue;
     sudoku.solve();
     var sane = sudoku.sanityCheck(true);
     var solved = sudoku.isSolved();
@@ -17,9 +17,6 @@ for (var i = 0; i < puzzles.length; ++i) {
     sudoku.print();
     console.log(solved ? 'solved' : 'not solved')
     console.log();
-    if (!sane) {
-        sudoku.sanityReport();
-    }
 }
 console.log(done_count + ' / ' + puzzles.length + ' solved');
 console.log(((done_count / puzzles.length) * 100).toFixed(1) + '% solved');
