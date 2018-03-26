@@ -44,7 +44,7 @@ var POSSIBLE = {
     9:    0b1000000000,
 };
 
-var MAP = {
+var SOLVED_INVERSE = {
     0b0000000001: '!',
     0b0000000011: 1,
     0b0000000101: 2,
@@ -103,7 +103,7 @@ class Sudoku {
                     square = bit.toString(2).padStart(10, '0');
                 } else {
                     if (bit & IS_SOLVED) {
-                        square = (MAP[bit]).toString() || '!';
+                        square = (SOLVED_INVERSE[bit]).toString() || '!';
                     } else {
                         square = '.';
                     }
@@ -138,12 +138,32 @@ class Sudoku {
 
     getRowIndexes(i) {
         var row = Math.floor(i / 9);
-        return [ row * 9 + 0, row * 9 + 1, row * 9 + 2, row * 9 + 3, row * 9 + 4, row * 9 + 5, row * 9 + 6, row * 9 + 7, row * 9 + 8, ];
+        return [
+            row * 9 + 0,
+            row * 9 + 1,
+            row * 9 + 2,
+            row * 9 + 3,
+            row * 9 + 4,
+            row * 9 + 5,
+            row * 9 + 6,
+            row * 9 + 7,
+            row * 9 + 8,
+        ];
     }
 
     getColIndexes(i) {
         var col = Math.floor(i % 9);
-        return [ col + 9*0, col + 9*1, col + 9*2, col + 9*3, col + 9*4, col + 9*5, col + 9*6, col + 9*7, col + 9*8, ];
+        return [
+            col + 9*0,
+            col + 9*1,
+            col + 9*2,
+            col + 9*3,
+            col + 9*4,
+            col + 9*5,
+            col + 9*6,
+            col + 9*7,
+            col + 9*8,
+        ];
     }
 
     getBlockIndexes(i) {
@@ -151,17 +171,27 @@ class Sudoku {
         var col = Math.floor(i % 9);
         var block_row = Math.floor(row / 3) * 3
         var block_col = Math.floor(col / 3) * 3
-        return [ (block_row + 0) * 9 + block_col + 0, (block_row + 0) * 9 + block_col + 1, (block_row + 0) * 9 + block_col + 2, (block_row + 1) * 9 + block_col + 0, (block_row + 1) * 9 + block_col + 1, (block_row + 1) * 9 + block_col + 2, (block_row + 2) * 9 + block_col + 0, (block_row + 2) * 9 + block_col + 1, (block_row + 2) * 9 + block_col + 2, ];
+        return [
+            (block_row + 0) * 9 + block_col + 0,
+            (block_row + 0) * 9 + block_col + 1,
+            (block_row + 0) * 9 + block_col + 2,
+            (block_row + 1) * 9 + block_col + 0,
+            (block_row + 1) * 9 + block_col + 1,
+            (block_row + 1) * 9 + block_col + 2,
+            (block_row + 2) * 9 + block_col + 0,
+            (block_row + 2) * 9 + block_col + 1,
+            (block_row + 2) * 9 + block_col + 2,
+        ];
     }
 
     isSolved() {
         for (var i = 0; i < 81; ++i) {
             if (!(this.puzzle[i] & IS_SOLVED)) return false;
         }
-        return true;;
+        return true;
     }
 
-    sanityCheck(build_report) {
+    sanityCheck(output_report) {
         var sets = [
             // rows
             [ 0,  1,  2,  3,  4,  5,  6,  7,  8  ],
@@ -198,7 +228,7 @@ class Sudoku {
         ];
 
         var sane = true;
-        if (build_report) {
+        if (output_report) {
             this.no_possible_squares = [];
             this.conflict_squares = [];
             this.changed_squares = [];
@@ -206,7 +236,7 @@ class Sudoku {
 
         for (var i = 0; i < 81; ++i) {
             if (this.puzzle[i] == 0) {
-                if (build_report) {
+                if (output_report) {
                     sane = false;
                     this.no_possible_squares.push(i);
                 } else {
@@ -229,7 +259,7 @@ class Sudoku {
             if (set_or) {
                 set_xor = set_xor | IS_SOLVED;
                 if (set_or != set_xor) {
-                    if (build_report) {
+                    if (output_report) {
                         sane = false;
                         var bad_bit = (set_or ^ set_xor) | IS_SOLVED;
                         for (var j = 0; j < set.length; ++j) {
@@ -247,7 +277,7 @@ class Sudoku {
         if (this.start_puzzle) {
             for (var i = 0; i < 81; ++i) {
                 if (this.start_puzzle[i] & IS_SOLVED && this.start_puzzle[i] != this.puzzle[i]) {
-                    if (build_report) {
+                    if (output_report) {
                         sane = false;
                         this.changed_squares.push(i);
                     } else {
@@ -257,7 +287,7 @@ class Sudoku {
             }
         }
 
-        if (build_report && !sane) {
+        if (output_report && !sane) {
             var print = this.print(false, false, true);
             var bin_print = this.print(false, true, true);
             var spaces = '                                                                                 ';
@@ -311,7 +341,6 @@ class Sudoku {
         var self = this;
         var changed = false;
         for (var i = 0; i < 81; ++i) {
-        //for (var i = 0; i < 20; ++i) {
             if (this.puzzle[i] & IS_SOLVED) continue;
             var row = this.getRowIndexes(i);
             var col = this.getColIndexes(i);
